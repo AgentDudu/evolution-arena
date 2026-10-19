@@ -1,0 +1,3 @@
+# Source files here are parsed as text by tests (script-block extraction from the HTML,
+# string surgery on sim.js), so keep LF in the working tree on every platform.
+* text=auto eol=lf

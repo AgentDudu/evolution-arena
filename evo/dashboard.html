@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Evolution Arena</title>
+<style>
+:root{--bg:#0b0e14;--panel:#131826;--ink:#d8e0f0;--dim:#7c89a6;--line:#243049;
+--acc:#5ad1b0;--acc2:#f0a35a;--acc3:#e0607a;--grid:#0f131d}
+html[data-theme=light]{--bg:#f6f7fa;--panel:#fff;--ink:#151a26;--dim:#5c6880;
+--line:#d5dbe6;--grid:#eceff5;--acc:#0d8f70;--acc2:#b56a12;--acc3:#c0294a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:13px/1.5 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+header{display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+padding:10px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;
+background:var(--bg);z-index:5}
+h1{font-size:14px;margin:0 12px 0 0;letter-spacing:.06em;text-transform:uppercase}
+h1 span{color:var(--acc)}
+nav{display:flex;gap:4px}
+nav button,select,input[type=range]{cursor:pointer}
+button,select{background:var(--panel);color:var(--ink);border:1px solid var(--line);
+border-radius:5px;padding:4px 10px;font:inherit}
+button.on{border-color:var(--acc);color:var(--acc)}
+main{padding:14px 16px 40px}
+section{display:none}section.on{display:block}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.card h3{margin:0 0 2px;font-size:12px;font-weight:600;letter-spacing:.04em}
+.card p{margin:0 0 8px;color:var(--dim);font-size:11px;line-height:1.4}
+canvas{display:block;width:100%;image-rendering:pixelated}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0}
+.row label{color:var(--dim);font-size:11px}
+#scrub{flex:1;min-width:220px}
+.kv{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--dim);margin-top:8px}
+.kv b{color:var(--ink);font-weight:600}
+.replay{display:grid;gap:12px;grid-template-columns:minmax(340px,560px) 1fr;align-items:start}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--dim);margin-top:6px}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px}
+.hint{color:var(--dim);font-size:11px;margin-top:6px}
+table{border-collapse:collapse;width:100%;font-size:11px}
+td,th{padding:2px 6px;border-bottom:1px solid var(--line);text-align:right}
+th{color:var(--dim);font-weight:500}
+td:first-child,th:first-child{text-align:left}
+@media(max-width:900px){.replay{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Evolution <span>Arena</span></h1>
+  <nav>
+    <button data-tab=replay class=on>Replay</button>
+    <button data-tab=charts>Charts</button>
+    <button data-tab=lineage>Lineage</button>
+    <button data-tab=about>Rules</button>
+  </nav>
+  <span id=meta style="color:var(--dim);font-size:11px"></span>
+  <div style="flex:1"></div>
+  <button id=theme>light</button>
+</header>
+<main>
+
+<section id=tab-replay class=on>
+  <div class=replay>
+    <div class=card>
+      <h3>World</h3>
+      <p id=gridnote>Organisms coloured by trait. Background is the food field.</p>
+      <canvas id=world width=512 height=512></canvas>
+      <div class=row>
+        <label>colour</label>
+        <select id=colorsel>
+          <option value=hue>hue (neutral lineage marker)</option>
+          <option value=size>size</option>
+          <option value=speed>speed</option>
+          <option value=e>energy</option>
+          <option value=cause>size class</option>
+        </select>
+        <label><input type=checkbox id=foodbg checked> food</label>
+        <label><input type=checkbox id=trail> trails</label>
+      </div>
+      <div class=legend id=legend></div>
+    </div>
+    <div>
+      <div class=card>
+        <h3>Timeline</h3>
+        <p>Scrub, or play. Charts and the world stay in sync.</p>
+        <div class=row>
+          <button id=play>&#9654; play</button>
+          <input type=range id=scrub min=0 max=0 value=0 step=1>
+          <label>speed</label>
+          <select id=fps><option>4</option><option selected>12</option><option>30</option></select>
+          <label>fps</label>
+        </div>
+        <div class=row id=livebar style="display:none">
+          <button id=liveplay>&#10074;&#10074; pause</button>
+          <button id=livestep>&#8635; step</button>
+          <label>ticks/frame</label>
+          <select id=livetpf><option>1</option><option selected>4</option><option>12</option><option>30</option></select>
+          <label><input type=checkbox id=livefollow checked> follow</label>
+          <span id=livestat style="color:var(--dim)"></span>
+        </div>
+        <div class=kv id=readout></div>
+      </div>
+      <div class=grid style="margin-top:12px">
+        <div class=card><h3>Population</h3><p>Total organisms.</p>
+          <canvas id=c_pop height=150></canvas></div>
+        <div class=card><h3>Deaths by cause</h3><p>What the selective pressure actually is.</p>
+          <canvas id=c_deaths height=150></canvas></div>
+        <div class=card><h3>Energy partition</h3><p>Energy in bodies vs energy in the environment. Closed system: the sum only moves with food regrowth.</p>
+          <canvas id=c_energy height=150></canvas></div>
+        <div class=card><h3>Diversity</h3><p>Shannon entropy over a 4&times;4 (size, speed) niche grid. Falls when one strategy takes over.</p>
+          <canvas id=c_div height=150></canvas></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id=tab-charts>
+  <div class=grid>
+    <div class=card><h3>Trait means</h3><p>Selection's footprint. Each trait costs energy, so none of these should sit at 1.0.</p><canvas id=t_mean height=210></canvas></div>
+    <div class=card><h3>Trait spread (std)</h3><p>Polymorphism. A collapse toward 0 means one genotype swept the world.</p><canvas id=t_std height=210></canvas></div>
+    <div class=card><h3>Size ridgeline</h3><p>Distribution of body size over time. Splitting bands are a population dividing into herbivores and predators.</p><canvas id=t_ridge_size height=230></canvas></div>
+    <div class=card><h3>Speed ridgeline</h3><p>Distribution of speed over time.</p><canvas id=t_ridge_speed height=230></canvas></div>
+    <div class=card><h3>Trade-off frontier: speed vs size</h3><p>Current frame. The empty middle is where selection punishes generalists.</p><canvas id=t_scatter1 height=250></canvas></div>
+    <div class=card><h3>Sense vs metabolism</h3><p>Current frame. Cheap-and-blind or far-seeing-and-hungry.</p><canvas id=t_scatter2 height=250></canvas></div>
+    <div class=card><h3>Flux</h3><p>Births and deaths per tick. Their crossing precedes population turns.</p><canvas id=c_flux height=180></canvas></div>
+    <div class=card><h3>Mean energy per organism</h3><p>How fat the population is, relative to what it needs to reproduce.</p><canvas id=c_fat height=180></canvas></div>
+  </div>
+</section>
+
+<section id=tab-lineage>
+  <div class=card>
+    <h3>Tree of life</h3>
+    <p>Every organism that ever lived, drawn as parent &rarr; offspring. Height is time;
+      colour is the neutral hue marker, so a band of colour is a lineage.
+      Faint branches went extinct.</p>
+    <div class=row>
+      <label>sampled tips</label><input type=range id=tips min=40 max=1200 value=320 step=20 style="width:160px">
+      <label id=tipn>320</label>
+      <label>colour</label>
+      <select id=lcolor><option value=hue>hue</option><option value=size>size</option>
+        <option value=cause>death cause</option></select>
+      <button id=lredraw>resample</button>
+    </div>
+    <canvas id=tree height=620></canvas>
+    <div class=kv id=lstats></div>
+  </div>
+  <div class=grid style="margin-top:12px">
+    <div class=card><h3>Lineage depth</h3><p>How many generations deep the current population's ancestors go.</p><canvas id=t_depth height=180></canvas></div>
+    <div class=card><h3>Deaths by cause (all time)</h3><p>Total selective deaths.</p><div id=ltable></div></div>
+  </div>
+</section>
+
+<section id=tab-about>
+  <div class=grid id=rules></div>
+</section>
+
+</main>
+<script>const TRACE = __TRACE__;</script>
+<script>const LIVE = __LIVE__;</script>
+<script>
+__SIM__
+</script>
+<script>
+/* Live mode: build a real World and fill TRACE before the dashboard reads it, so every
+   chart, the tree and the world renderer work unchanged on a growing buffer. */
+if (typeof LIVE !== "undefined" && LIVE) {
+  LIVE.world = new World(preset(LIVE.preset, {seed: LIVE.seed}),
+                         new RNG(LIVE.rng.mt, LIVE.rng.pos));
+  const w = LIVE.world;
+  TRACE.meta.params = w.p; TRACE.meta.w = w.p.w; TRACE.meta.h = w.p.h;
+  TRACE.meta.traits = Array.from(TRAITS);
+  TRACE.meta.preset = LIVE.preset;
+  for (let i = 0; i < LIVE.warmup; i++) {
+    w.step(); TRACE.stats.push(w.stats());
+    if (w.tick % LIVE.snapEvery === 0) TRACE.snaps.push(w.snapshot(LIVE.snapCap));
+  }
+  w.lineageBlob(TRACE.lineage);
+}
+</script>
+<script>
+"use strict";
+const T = TRACE, S = T.stats, SN = T.snaps, P = T.meta.params, W = T.meta.w, H = T.meta.h;
+const TR = T.meta.traits; let N = S.length;
+const PAL = ["#5ad1b0","#f0a35a","#e0607a","#6aa8f0","#c07ae0","#8fd14a","#e8d05a"];
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+
+/* ---------- hex typed-array decoding ---------- */
+function hx(hex){
+  const n=hex.length>>1, out=new Uint8Array(n);
+  for(let i=0,j=0;i<n;i++,j+=2) out[i]=(hxv(hex.charCodeAt(j))<<4)|hxv(hex.charCodeAt(j+1));
+  return out;
+}
+function hxv(c){ return c<=57?c-48:(c<=70?c-55:c-87); }
+function u16(hex){ const b=hx(hex), o=new Uint16Array(b.length/2);
+  for(let i=0;i<o.length;i++) o[i]=b[2*i]|(b[2*i+1]<<8); return o; }
+const CACHE = new Map();
+const NG = TR.length;
+const TI = {}; TR.forEach((n,i)=>TI[n]=i);
+function frame(i){
+  if(CACHE.has(i)) return CACHE.get(i);
+  const s = SN[i];
+  /* live frames arrive from World.snapshot() already typed; baked frames are hex */
+  const f = (typeof Uint16Array !== "undefined" && s.cell instanceof Uint16Array)
+    ? {t:s.t, n:s.n, f:s.f, cell:s.cell, g:s.g, e:s.e}
+    : {t:s.t, n:s.n, f:s.f?hx(s.f):null};
+  if(s.n && !f.cell){ f.cell=u16(s.cell); f.g=hx(s.g); f.e=hx(s.e); }
+  if(CACHE.size>60) CACHE.clear();
+  CACHE.set(i,f); return f;
+}
+const tv = (f,i,k) => f.g[i*NG+k]/255;   // trait of organism i in a frame, 0..1
+
+/* ---------- small chart kit ---------- */
+function ctxOf(cv){
+  const dpr = window.devicePixelRatio||1, w = cv.clientWidth||cv.width, h = +cv.height;
+  if(cv.width!==Math.round(w*dpr)){ cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr); }
+  const c = cv.getContext("2d");
+  c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
+  return [c, w, h];
+}
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function axes(c,w,h,pad){
+  c.strokeStyle=css("--line"); c.lineWidth=1; c.beginPath();
+  c.moveTo(pad.l,pad.t); c.lineTo(pad.l,h-pad.b); c.lineTo(w-pad.r,h-pad.b); c.stroke();
+}
+function xscale(i,n,w,pad){ return pad.l+(w-pad.l-pad.r)*(n<2?0:i/(n-1)); }
+/* o.cursor is a *frame* index but series are drawn over *ticks*; without this map the
+   cursor line is stuck in the left 1/snap_every of every chart. */
+const curTick = k => (SN.length && S.length)
+  ? clamp(SN[clamp(k,0,SN.length-1)].t - S[0].t, 0, N-1) : 0;
+function series(cv, arrs, o={}){
+  const [c,w,h]=ctxOf(cv), pad={l:38,r:8,t:10,b:18};
+  axes(c,w,h,pad);
+  let lo=o.lo!==undefined?o.lo:Infinity, hi=o.hi!==undefined?o.hi:-Infinity;
+  for(const a of arrs) for(const v of a.y) if(v<lo)lo=v;
+  for(const a of arrs) for(const v of a.y) if(v>hi)hi=v;
+  if(!isFinite(lo)){lo=0;hi=1;} if(hi===lo) hi=lo+1;
+  if(o.lo===undefined) lo=Math.min(0,lo);
+  const yy=v=>h-pad.b-(h-pad.t-pad.b)*((v-lo)/(hi-lo));
+  c.fillStyle=css("--dim"); c.font="10px ui-monospace,monospace"; c.textAlign="right";
+  c.fillText(fmt(hi),pad.l-4,pad.t+8); c.fillText(fmt(lo),pad.l-4,h-pad.b);
+  if(o.cursor!=null){
+    c.strokeStyle=css("--acc"); c.globalAlpha=.5; c.beginPath();
+    const x=xscale(curTick(o.cursor),N,w,pad); c.moveTo(x,pad.t); c.lineTo(x,h-pad.b);
+    c.stroke(); c.globalAlpha=1;
+  }
+  for(const a of arrs){
+    c.strokeStyle=a.c; c.lineWidth=a.w||1.6; c.beginPath();
+    let started=false;
+    for(let i=0;i<a.y.length;i++){
+      const x=xscale(i,a.y.length,w,pad), y=yy(a.y[i]);
+      if(!started){c.moveTo(x,y);started=true;} else c.lineTo(x,y);
+    }
+    if(a.fill){ c.lineTo(w-pad.r,h-pad.b); c.lineTo(pad.l,h-pad.b); c.closePath();
+      c.globalAlpha=a.fill; c.fillStyle=a.c; c.fill(); c.globalAlpha=1; }
+    c.stroke();
+  }
+  if(o.labels){
+    c.textAlign="left"; let x=pad.l+4;
+    for(const a of arrs){ c.fillStyle=a.c; c.fillText(a.name,x,pad.t+9);
+      x+=c.measureText(a.name).width+12; }
+  }
+}
+function stacked(cv, arrs, o={}){
+  const [c,w,h]=ctxOf(cv), pad={l:38,r:8,t:10,b:18};
+  axes(c,w,h,pad);
+  const n=arrs[0].y.length, tot=[]; for(let i=0;i<n;i++){let s=0;for(const a of arrs)s+=a.y[i];tot.push(s);}
+  const hi=Math.max(1,...tot);
+  c.fillStyle=css("--dim"); c.font="10px ui-monospace,monospace"; c.textAlign="right";
+  c.fillText(fmt(hi),pad.l-4,pad.t+8); c.fillText("0",pad.l-4,h-pad.b);
+  const base=new Array(n).fill(0);
+  for(const a of arrs){
+    c.beginPath();
+    for(let i=0;i<n;i++) c.lineTo(xscale(i,n,w,pad), h-pad.b-(h-pad.t-pad.b)*(base[i]/hi));
+    for(let i=n-1;i>=0;i--) c.lineTo(xscale(i,n,w,pad), h-pad.b-(h-pad.t-pad.b)*((base[i]+a.y[i])/hi));
+    c.closePath(); c.fillStyle=a.c; c.globalAlpha=.75; c.fill(); c.globalAlpha=1;
+    for(let i=0;i<n;i++) base[i]+=a.y[i];
+  }
+  if(o.cursor!=null){ c.strokeStyle=css("--acc"); c.globalAlpha=.5; c.beginPath();
+    const x=xscale(curTick(o.cursor),N,w,pad); c.moveTo(x,pad.t); c.lineTo(x,h-pad.b); c.stroke(); c.globalAlpha=1;}
+}
+function fmt(v){ const a=Math.abs(v);
+  return a>=1e6?(v/1e6).toFixed(1)+"M":a>=1e3?(v/1e3).toFixed(1)+"k":a>=10?v.toFixed(0):v.toFixed(a<1?2:1); }
+const col = k => S.map(s=>s[k]);
+function traitCol(i){ return S.map(s=>s.mean[i]); }
+function traitStd(i){ return S.map(s=>s.std[i]); }
+
+/* ---------- world canvas ---------- */
+const wcv=$("#world");
+function hsl(h,s,l){ return `hsl(${(h*360)|0} ${s}% ${l}%)`; }
+function drawWorld(){
+  const c=wcv.getContext("2d"), sz=wcv.width/W;
+  if(!$("#trail").checked){
+    c.fillStyle=css("--grid"); c.fillRect(0,0,wcv.width,wcv.height);
+    const f=frame(cur).f;
+    if(f&&$("#foodbg").checked){
+      const g=Math.round(Math.sqrt(f.length)), cw=wcv.width/g;
+      for(let y=0;y<g;y++)for(let x=0;x<g;x++){
+        const v=f[y*g+x]/255; if(v<0.02) continue;
+        c.fillStyle=`rgba(90,209,176,${(v*0.5).toFixed(3)})`;
+        c.fillRect(x*cw,y*cw,cw,cw);
+      }
+    }
+  }
+  const f=frame(cur), mode=$("#colorsel").value;
+  if(!f.n) return;
+  const kH=TI.hue, kS=TI.size, kP=TI.speed;
+  c.globalAlpha=.9;
+  for(let i=0;i<f.n;i++){
+    const cell=f.cell[i], x=(cell%W)*sz+sz/2, y=((cell/W)|0)*sz+sz/2;
+    let fill, r;
+    if(mode==="hue") fill=hsl(f.g[i*NG+kH]/255,70,58);
+    else if(mode==="size"||mode==="speed"){ const v=tv(f,i,mode==="size"?kS:kP);
+      fill=hsl(200-160*v,70,55); r=v; }
+    else if(mode==="e"){ const v=f.e[i]/255; fill=hsl(120*v,70,50); }
+    else { fill=["#6aa8f0","#e8d05a","#e0607a"][clamp((tv(f,i,kS)*3)|0,0,2)]; }
+    c.fillStyle=fill;
+    c.beginPath(); c.arc(x,y,(r===undefined?0.30:0.18+0.34*r)*sz,0,6.284); c.fill();
+  }
+  c.globalAlpha=1;
+}
+function legend(){
+  const mode=$("#colorsel").value, L=$("#legend");
+  if(mode==="hue"){ L.innerHTML="<span>hue drifts neutrally: colour = lineage</span>"; return; }
+  if(mode==="e"){ L.innerHTML="<span><i style='background:hsl(0,70%,50%)'></i>starving<i style='background:hsl(120,70%,50%)'></i>full</span>"; return; }
+  if(mode==="cause"){ L.innerHTML="<span><i style='background:#6aa8f0'></i>small<i style='background:#e8d05a'></i>mid<i style='background:#e0607a'></i>large</span>"; return; }
+  L.innerHTML=`<span><i style='background:hsl(200,70%,55%)'></i>${mode} low<i style='background:hsl(40,70%,55%)'></i>high &nbsp;radius also scales</span>`;
+}
+
+/* ---------- timeline ---------- */
+let cur=0, playing=false, timer=null;
+let T0 = S.length ? S[0].t - 1 : 0;          // live mode drops old ticks off the left
+const statAt = t => S[clamp(t-1-T0, 0, N-1)];
+const scrub=$("#scrub");
+scrub.max=SN.length-1;
+function readout(){
+  const s=statAt(SN[cur].t);
+  $("#readout").innerHTML=
+    `tick <b>${s.t}</b> pop <b>${s.pop}</b> food <b>${fmt(s.food)}</b> `+
+    `births <b>${s.births}</b> deaths <b>${s.deaths}</b> `+
+    `eaten <b>${s.d_eaten}</b> div <b>${s.div.toFixed(2)}</b>`+
+    (SN[cur].sampled?` <span style="color:var(--acc2)">(frame subsampled)</span>`:"");
+}
+function setCur(i){
+  cur=clamp(i|0,0,SN.length-1); scrub.value=cur;
+  drawWorld(); drawReplayCharts(); readout();
+}
+scrub.oninput=()=>{stop();setCur(+scrub.value);};
+function play(){ playing=true; $("#play").textContent="⏸ pause";
+  timer=setInterval(()=>{ if(cur>=SN.length-1) return stop(); setCur(cur+1); },
+                    1000/+$("#fps").value); }
+function stop(){ playing=false; $("#play").textContent="▶ play"; clearInterval(timer); }
+$("#play").onclick=()=>playing?stop():play();
+$("#fps").onchange=()=>{ if(playing){stop();play();} };
+$("#colorsel").onchange=()=>{legend();drawWorld();};
+$("#foodbg").onchange=drawWorld; $("#trail").onchange=drawWorld;
+
+/* ---------- replay charts ---------- */
+function drawReplayCharts(){
+  const k=cur;
+  series($("#c_pop"),[{name:"pop",y:col("pop"),c:PAL[0]}],{cursor:k});
+  stacked($("#c_deaths"),[
+    {name:"starved",y:col("d_starved"),c:PAL[1]},
+    {name:"age",y:col("d_age"),c:PAL[3]},
+    {name:"eaten",y:col("d_eaten"),c:PAL[2]}],{cursor:k});
+  series($("#c_energy"),[
+    {name:"bodies",y:col("biomass"),c:PAL[2]},
+    {name:"environment",y:col("food"),c:PAL[0]}],{cursor:k,labels:true});
+  series($("#c_div"),[
+    {name:"niche",y:col("div"),c:PAL[0]},
+    {name:"hue",y:col("hue_div"),c:PAL[4]}],{cursor:k,labels:true});
+}
+function drawBigCharts(){
+  series($("#t_mean"),TR.map((n,i)=>({name:n,y:traitCol(i),c:PAL[i%7]})),{lo:0,hi:1});
+  series($("#t_std"),TR.map((n,i)=>({name:n,y:traitStd(i),c:PAL[i%7]})),{lo:0});
+  series($("#c_flux"),[
+    {name:"births",y:col("births"),c:PAL[0]},
+    {name:"deaths",y:col("deaths"),c:PAL[2]}],{labels:true});
+  series($("#c_fat"),[{name:"mean energy",y:col("energy"),c:PAL[5]}],{});
+  ridgeline($("#t_ridge_size"),"size");
+  ridgeline($("#t_ridge_speed"),"speed");
+  scatter($("#t_scatter1"),"speed","size");
+  scatter($("#t_scatter2"),"sense","metabolism");
+}
+
+/* ---------- ridgeline from snapshots ---------- */
+function ridgeline(cv,key){
+  const [c,w,h]=ctxOf(cv), pad={l:34,r:8,t:12,b:20}, B=20, k=TI[key];
+  const rows=SN.map((s,si)=>{
+    const f=frame(si), hist=new Float64Array(B);
+    if(f.n){ for(let i=0;i<f.n;i++) hist[clamp((tv(f,i,k)*B)|0,0,B-1)]++;
+      for(let i=0;i<B;i++) hist[i]/=f.n; }
+    return hist;
+  });
+  const m=Math.max(1e-6,...rows.flatMap(r=>Array.from(r)));
+  const step=(h-pad.t-pad.b)/Math.max(1,rows.length-1);
+  const bw=(w-pad.l-pad.r)/B;
+  c.font="10px ui-monospace,monospace";
+  for(let r=rows.length-1;r>=0;r--){
+    const y0=h-pad.b-r*step, t=rows.length>1?r/(rows.length-1):0;
+    c.beginPath(); c.moveTo(pad.l,y0);
+    for(let b=0;b<B;b++) c.lineTo(pad.l+b*bw,y0-(rows[r][b]/m)*step*2.6);
+    c.lineTo(pad.l+(B-1)*bw,y0);
+    c.closePath();
+    c.fillStyle=`hsla(${200-140*t} 70% 60% / .28)`;
+    c.fill(); c.strokeStyle=`hsla(${200-140*t} 70% 68% / .9)`; c.lineWidth=1; c.stroke();
+  }
+  c.fillStyle=css("--dim"); c.textAlign="left";
+  c.fillText(`${key}: 0 → 1`,pad.l,h-6);
+  c.textAlign="right"; c.fillText("older ↑ newer",w-pad.r,pad.t+2);
+}
+
+/* ---------- scatter ---------- */
+function scatter(cv,kx,ky){
+  const [c,w,h]=ctxOf(cv), pad={l:34,r:10,t:12,b:22};
+  axes(c,w,h,pad);
+  const ix=TI[kx], iy=TI[ky];
+  c.fillStyle=css("--dim"); c.font="10px ui-monospace,monospace";
+  c.textAlign="right"; c.fillText(kx,w-pad.r,h-pad.b+12);
+  c.save(); c.translate(11,pad.t+24); c.rotate(-1.57); c.textAlign="left";
+  c.fillText(ky,0,0); c.restore();
+  const f=frame(cur); if(!f.n) return;
+  const X=v=>pad.l+(w-pad.l-pad.r)*v, Y=v=>h-pad.b-(h-pad.t-pad.b)*v;
+  c.globalAlpha=.5;
+  for(let i=0;i<f.n;i++){
+    c.fillStyle=hsl(f.g[i*NG+TI.hue]/255,70,58);
+    c.beginPath(); c.arc(X(tv(f,i,ix)),Y(tv(f,i,iy)),2.3,0,6.284); c.fill();
+  }
+  c.globalAlpha=1;
+}
+
+/* ---------- lineage ---------- */
+const LIN=T.lineage;
+let treeLayout=null;
+function buildTree(){
+  const n=LIN.n, kids=Array.from({length:n},()=>[]);
+  for(let i=0;i<n;i++) if(LIN.parent[i]>=0&&LIN.parent[i]<n) kids[LIN.parent[i]].push(i);
+  const roots=[]; for(let i=0;i<n;i++) if(LIN.parent[i]<0) roots.push(i);
+  const extant=[]; for(let i=0;i<n;i++) if(LIN.died[i]<0) extant.push(i);
+  // most recent common ancestor of the survivors: parents always have smaller ids,
+  // so a single descending pass counts descendants.
+  let mrca=-1;
+  if(extant.length){
+    const cnt=new Int32Array(n); for(const i of extant) cnt[i]=1;
+    for(let i=n-1;i>0;i--){ const p=LIN.parent[i]; if(p>=0&&p<n){ cnt[p]+=cnt[i];
+      if(cnt[p]===extant.length&&p>mrca) mrca=p; } }
+  }
+  return {n,kids,roots,extant,mrca};
+}
+function layoutTree(tipCount){
+  const T0=treeLayout, n=T0.n;
+  const tips=T0.extant.length?T0.extant:T0.roots;
+  const pick=new Set(); const src=tips.slice();
+  for(let i=src.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [src[i],src[j]]=[src[j],src[i]]; }
+  for(const t of src.slice(0,tipCount)){ let u=t; while(u>=0&&!pick.has(u)){ pick.add(u); u=LIN.parent[u]; } }
+  if(!pick.size) for(const t of src.slice(0,1)){ let u=t; while(u>=0){pick.add(u);u=LIN.parent[u];} }
+  const xs=new Float64Array(n).fill(NaN); let leaf=0;
+  const stack=[];
+  for(const r of T0.roots) if(pick.has(r)) stack.push(r);
+  const order=[]; // iterative post-order
+  const seen=new Set();
+  function visit(r){ stack.push(r);
+    while(stack.length){
+      const u=stack[stack.length-1];
+      const ks=T0.kids[u].filter(k=>pick.has(k));
+      if(ks.length&&!seen.has(u)){ seen.add(u); for(const k of ks) stack.push(k); continue; }
+      stack.pop();
+      if(!ks.length) xs[u]=leaf++; else { let s=0; for(const k of ks) s+=xs[k]; xs[u]=s/ks.length; }
+      order.push(u);
+    }
+  }
+  for(const r of T0.roots) if(pick.has(r)&&!seen.has(r)) visit(r);
+  return {xs,leaf:Math.max(1,leaf),pick};
+}
+function drawTree(){
+  if(!treeLayout) return;
+  const L=layoutTree(+$("#tips").value), [c,w,h]=ctxOf($("#tree"));
+  const pad={l:8,r:8,t:14,b:22};
+  let lo=Infinity,hi=-Infinity;
+  for(let i=0;i<LIN.n;i++) if(!isNaN(L.xs[i])){ lo=Math.min(lo,LIN.born[i]); hi=Math.max(hi,Math.max(lo,LIN.died[i])); }
+  hi=Math.max(hi,Math.max(...LIN.born));
+  const X=v=>pad.l+(w-pad.l-pad.r)*(L.leaf<2?.5:(L.xs[v])/(L.leaf-1));
+  const Y=t=>pad.t+(h-pad.t-pad.b)*(1-t/Math.max(1,hi));
+  const mode=$("#lcolor").value;
+  c.lineWidth=1;
+  for(let i=0;i<LIN.n;i++){
+    if(isNaN(L.xs[i])) continue; const p=LIN.parent[i]; if(p<0||isNaN(L.xs[p])) continue;
+    let col;
+    if(mode==="hue") col=hsl(LIN.hue[i]/255,70,58);
+    else if(mode==="size") col=hsl(200-160*(LIN.size[i]/255),70,55);
+    else col=["#7c89a6","#f0a35a","#6aa8f0","#e0607a"][LIN.cause[i]];
+    c.strokeStyle=col; c.globalAlpha=LIN.died[i]<0?.85:.22;
+    const x=X(i), yb=Y(LIN.born[i]), ye=Y(LIN.died[i]<0?hi:LIN.died[i]);
+    c.beginPath(); c.moveTo(X(p),Y(LIN.born[p])); c.lineTo(X(p),yb); c.lineTo(x,yb); c.stroke();
+    if(LIN.died[i]>=0){ c.globalAlpha=.5; c.beginPath(); c.arc(x,yb,1.4,0,6.284);
+      c.fillStyle=col; c.fill(); }
+  }
+  c.globalAlpha=1;
+  c.fillStyle=css("--dim"); c.font="10px ui-monospace,monospace"; c.textAlign="left";
+  c.fillText("present",pad.l+2,pad.t+4); c.fillText("origin",pad.l+2,h-pad.b-2);
+  if(treeLayout.mrca>=0){ const x=X(treeLayout.mrca);
+    c.strokeStyle=css("--acc"); c.setLineDash([3,3]); c.globalAlpha=.7; c.beginPath();
+    c.moveTo(0,Y(LIN.born[treeLayout.mrca])); c.lineTo(w,Y(LIN.born[treeLayout.mrca]));
+    c.stroke(); c.setLineDash([]); c.globalAlpha=1;
+    c.fillStyle=css("--acc");
+    c.fillText(`MRCA of survivors, tick ${LIN.born[treeLayout.mrca]}`,pad.l+4,Y(LIN.born[treeLayout.mrca])-4);
+  }
+  treeLayout.L=L;
+}
+function lineageStats(){
+  const T0=treeLayout, n=LIN.n;
+  const cause=[0,0,0,0]; for(let i=0;i<n;i++) cause[LIN.cause[i]]++;
+  const depth=new Int32Array(n); let maxd=0, sumd=0;
+  for(let i=0;i<n;i++){ let d=0,u=i; while(LIN.parent[u]>=0){u=LIN.parent[u];d++;}
+    depth[i]=d; maxd=Math.max(maxd,d); if(LIN.died[i]<0) sumd+=d; }
+  $("#lstats").innerHTML=
+    `ever lived <b>${n.toLocaleString()}</b> extant <b>${T0.extant.length}</b> `+
+    `founders <b>${T0.roots.length}</b> max depth <b>${maxd}</b> gen `+
+    `mean depth of survivors <b>${T0.extant.length?(sumd/T0.extant.length).toFixed(1):"-"}</b> gen `+
+    `MRCA <b>${T0.mrca>=0?"tick "+LIN.born[T0.mrca]:"none (multiple lines)"}</b>`;
+  $("#ltable").innerHTML=`<table><tr><th>cause</th><th>count</th><th>share</th></tr>`+
+    ["still alive","starved","old age","eaten"].map((k,i)=>
+      `<tr><td>${k}</td><td>${cause[i].toLocaleString()}</td><td>${(100*cause[i]/n).toFixed(1)}%</td></tr>`).join("")+`</table>`;
+  const bins=new Float64Array(40);
+  for(let i=0;i<n;i++) bins[Math.min(39,(depth[i]/Math.max(1,maxd/40))|0)]++;
+  const [c,w,h]=ctxOf($("#t_depth")), pad={l:34,r:8,t:10,b:18};
+  axes(c,w,h,pad);
+  const m=Math.max(1,...bins);
+  c.fillStyle=css("--acc");
+  for(let i=0;i<40;i++){ const bh=(h-pad.t-pad.b)*bins[i]/m;
+    c.fillRect(pad.l+(w-pad.l-pad.r)*i/40,h-pad.b-bh,(w-pad.l-pad.r)/40-1,bh); }
+  c.fillStyle=css("--dim"); c.font="10px ui-monospace,monospace"; c.textAlign="right";
+  c.fillText(fmt(m),pad.l-4,pad.t+8); c.fillText("0",pad.l-4,h-pad.b);
+  c.textAlign="left"; c.fillText("generation depth →",pad.l+4,h-4);
+}
+
+/* ---------- rules tab ---------- */
+function rules(){
+  const p=P, rows=[
+    ["The tick", `Food regrows, then every organism <b>senses</b>, <b>moves</b>, <b>attacks</b>,
+      <b>eats</b>, <b>burns</b> energy, <b>ages</b>, and maybe <b>splits</b>. Anything at zero
+      energy or past its lifespan dies. That is the entire model.`],
+    ["Closed energy", `Sun &rarr; food &rarr; organism &rarr; heat. Food regrows at
+      <b>${p.food_regrow}</b>/cell/tick on a 64&times;64 toroidal grid, so ~${(p.food_regrow*p.w*p.h).toFixed(0)}
+      energy enters the world per tick and nothing else does. Carrying capacity is an
+      outcome, never a parameter.`],
+    ["Traits cost energy", `Every trait is paid for every tick. A free trait always evolves
+      to its ceiling and the sim goes flat. This is the single most important rule.`],
+    ["Body size", `Capacity barely grows with size (+${p.cap1}) while plant digestion gets
+      <b>worse</b> with size (&times;${(1-p.carnivory).toFixed(2)} at max). Being large only pays
+      if you can catch something &mdash; which is what makes an arms race instead of a ratchet.`],
+    ["Predation", `An organism can bite anything in its 3&times;3 block at least
+      ${p.attack_gap} smaller. The chase costs energy whether it lands or not, and faster
+      prey escape more often.`],
+    ["Inheritance", `Each of ${TR.length} genes mutates with probability ${p.mut_rate} by
+      a Gaussian of &sigma;=${p.mut_sigma}, clamped to [0,1]. Offspring get
+      ${(p.split*100).toFixed(0)}% of the parent's energy; the rest is the cost of reproducing.`],
+  ];
+  const costs=[["speed",p.cost[0]],["sense",p.cost[1]],["size",p.cost[2]+" (quadratic)"],
+    ["metabolism",p.cost[3]],["repro",p.cost[4]],["lifespan",p.cost[5]],["hue",p.cost[6]+" (neutral)"]];
+  $("#rules").innerHTML=rows.map(r=>`<div class=card><h3>${r[0]}</h3><p>${r[1]}</p></div>`).join("")
+    +`<div class=card><h3>Trait cost table</h3><p>Energy per tick at trait = 1.0.</p><table>
+      <tr><th>trait</th><th>cost</th><th>mean now</th></tr>`
+    + costs.map((r,i)=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${S[N-1].mean[i].toFixed(3)}</td></tr>`).join("")
+    +`</table></div>`;
+}
+
+/* ---------- tabs / boot ---------- */
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+  ["replay","charts","lineage","about"].forEach(t=>
+    $("#tab-"+t).classList.toggle("on",t===b.dataset.tab));
+  if(b.dataset.tab==="charts") drawBigCharts();
+  if(b.dataset.tab==="lineage"){ drawTree(); lineageStats(); }
+  if(b.dataset.tab==="replay"){ drawReplayCharts(); drawWorld(); }
+});
+$("#theme").onclick=e=>{
+  const light=document.documentElement.dataset.theme==="light";
+  document.documentElement.dataset.theme=light?"":"light";
+  e.target.textContent=light?"light":"dark"; drawAll();
+};
+$("#tips").oninput=e=>{$("#tipn").textContent=e.target.value;};
+$("#tips").onchange=drawTree;
+$("#lcolor").onchange=drawTree;
+$("#lredraw").onclick=drawTree;
+addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT") return;
+  if(e.key===" "){e.preventDefault(); playing?stop():play();}
+  if(e.key==="ArrowRight"){stop();setCur(cur+1);}
+  if(e.key==="ArrowLeft"){stop();setCur(cur-1);}
+});
+function drawAll(){ drawReplayCharts(); drawWorld();
+  if($("#tab-charts").classList.contains("on")) drawBigCharts();
+  if($("#tab-lineage").classList.contains("on")){drawTree();lineageStats();} }
+let rt; addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(drawAll,180);});
+
+$("#meta").textContent=`${T.meta.preset||""}${T.meta.score?" score "+T.meta.score:""} · seed ${P.seed}`
+  +` · ${W}×${H} · ${N} ticks · ${LIN.n.toLocaleString()} organisms lived`;
+treeLayout=buildTree();
+legend(); setCur(0); rules();
+if(N>1) setCur(Math.floor(SN.length/2));
+
+/* ---------- live mode ----------
+   The field redraws every animation frame; the charts redraw at 5 Hz, which is what
+   leaves room in the frame budget for the world itself. */
+if (typeof LIVE !== "undefined" && LIVE) {
+  const w = LIVE.world;
+  let running = true, lastDraw = 0, ema = 0, last = performance.now();
+
+  // --steps seeds the ticks/frame control; add it to the list if it is not a preset choice.
+  const tpfSel = $("#livetpf"), stepChoices = [1, 4, 12, 30];
+  if (!stepChoices.includes(LIVE.steps)) stepChoices.push(LIVE.steps);
+  tpfSel.innerHTML = stepChoices
+    .map(v => `<option${v === LIVE.steps ? " selected" : ""}>${v}</option>`).join("");
+
+  function trim(){                       // bounded history, or col() grows without limit
+    if (S.length > LIVE.history) { T0 = S[0].t; S.splice(0, S.length - LIVE.history); }
+    if (SN.length > LIVE.frames) SN.splice(0, SN.length - LIVE.frames);
+    N = S.length; scrub.max = SN.length - 1; CACHE.clear();
+  }
+  function advance(n){
+    for (let i = 0; i < n; i++) {
+      w.step(); S.push(w.stats());
+      if (w.tick % LIVE.snapEvery === 0) SN.push(w.snapshot(LIVE.snapCap));
+    }
+    trim();
+  }
+  function loop(now){
+    const tpf = +$("#livetpf").value || 1;
+    if (running) advance(tpf);
+    if ($("#livefollow").checked) cur = SN.length - 1;
+    cur = clamp(cur, 0, SN.length - 1); scrub.value = cur;
+    drawWorld();
+    if (now - lastDraw > 200) {
+      lastDraw = now; w.lineageBlob(LIN);
+      $("#meta").textContent = `${T.meta.preset||""} · live seed ${P.seed}`
+        + ` · ${W}×${H} · tick ${w.tick} · ${LIN.n.toLocaleString()} organisms lived`;
+      drawReplayCharts();
+      readout();
+      if ($("#tab-charts").classList.contains("on")) drawBigCharts();
+      if ($("#tab-lineage").classList.contains("on")) { treeLayout = buildTree(); drawTree(); lineageStats(); }
+      rules();
+    }
+    const dt = now - last; last = now;
+    if (dt > 0) ema = ema ? ema * 0.9 + dt * 0.1 : dt;
+    $("#livestat").textContent = running
+      ? `${Math.round(1000 * tpf / ema).toLocaleString()} ticks/s · ${Math.round(ema)} ms/frame`
+      : "paused";
+    requestAnimationFrame(loop);
+  }
+  $("#livebar").style.display = "";
+  $("#liveplay").onclick = () => { running = !running;
+    $("#liveplay").innerHTML = running ? "&#10074;&#10074; pause" : "&#9654; resume"; };
+  $("#livestep").onclick = () => { running = false;
+    $("#liveplay").innerHTML = "&#9654; resume";
+    advance(1); cur = SN.length - 1; drawAll(); };
+  $("#livefollow").onchange = () => { if ($("#livefollow").checked) setCur(SN.length - 1); };
+  setCur(SN.length - 1);
+  requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
