@@ -18,13 +18,19 @@ simulator is inlined in the page and runs in your browser.
 `--live` is the agar.io-style view: the world steps in real time, organisms are drawn every
 frame, and the graphs below redraw about five times a second while you watch. It is a live
 run, not a recording — the scrubber follows the frontier, and dragging it back pauses and
-rewinds; press resume to rejoin. Speed is `--steps`: how many ticks one animation frame
-computes. Raise it to run faster than real time, at the cost of a choppier world. The
+rewinds; press resume to rejoin. The tick clock and the paint clock are separate: ticks
+advance at the rate in the `ticks/s` box (15, deliberately slow) and the picture advances
+every animation frame, one tick behind, interpolating into place — that gap is what reads as
+motion rather than a slideshow. Organisms are nudged to a stable spot inside their own cell,
+so two in one cell are not concentric, and a kill leaves a short orange ring; without that,
+predation is two circles sharing a point and is invisible. The
 lineage tree keeps growing as you watch, so it is rebuilt on that same five-times-a-second
 beat rather than every frame.
 
 Drop `--live` and the sim runs in Python instead, with a finished trace baked into the page.
-Slower to produce, but it carries every tick, so the scrubber has full resolution:
+Slower to produce, and it carries every tick of the *statistics* — but the world canvas is
+redrawn from a snapshot taken every `--snap-every` ticks (50 by default), so scrubbing the
+baked page jumps 50 ticks at a time. Watch it move with `--live`:
 
 ---
 
@@ -181,8 +187,12 @@ python -m evo.sweep ... --top 3 --save        # dashboards for the best 3
 python -m tests.test_sim                      # invariants
 python -m evo.golden && node tests/test_parity.js   # sim.py <-> web/sim.js parity
 python -m evo.controls                        # regenerate the controls table below
-node tools/render_check.js out/arms.html      # dashboard actually renders
-node tools/render_check.js out/live.html      # live page boots the Python world and advances
+
+# the render goldens are blessed against exactly these two artifacts
+python -m evo.run --preset arms_race --ticks 4000 --seed 1 --out out/arms
+python -m evo.run --preset arms_race --seed 3 --live --out out/live
+node tools/render_check.js out/arms.html      # dashboard draws the blessed tape
+node tools/render_check.js out/live.html      # live loop advances, interpolates, and draws kills
 ```
 
 Presets: `ancestral` `eden` `famine` `arms_race` `mutagenic` `peaceful` `flat`.
@@ -278,6 +288,47 @@ dispatches on dtype, and its integer path applies `mode="wrap"` incorrectly, dis
 its own float path at the border. Both density fields fed it int64, so the predation gate was
 partly driven by that quirk. `evo/sim.py` now uses an exact integer box sum instead —
 dtype-independent, and the one formulation JS can match bit for bit.
+
+### The render contract
+
+`tools/render_check.js` runs the dashboard's own JS against a fake DOM and records the
+**draw tape**: every canvas call, with its arguments and the style in force when the mark
+went down. `tests/golden/render/<artifact>.json` holds a digest of that tape per canvas,
+plus op counts, extent, and the first 40 ops. A chart can now fail a test for being wrong,
+not just for being blank.
+
+This is a tape diff rather than a screenshot diff on purpose: no browser download, and no
+flakiness from font rasterisation or GPU paths, because nothing is rasterised. It costs
+~1s per artifact.
+
+Injected bugs it catches, each localised to the exact op:
+
+| mutation | caught |
+|---|---|
+| one series colour changed by one hex digit | yes |
+| a line path shifted 3px | yes, `differs at op 15` |
+| `lineWidth` 1 → 2 | yes |
+| legend label gains a trailing space | yes |
+| a CSS `--dim` colour changed by one hex digit | yes — the harness reads the real `:root` palette |
+| a chart draws nothing | yes |
+
+What a tape cannot see is *legibility*: two series in near-identical colours, or text sitting
+on top of a line. `--sheet` replays the tape as `out/sheet.svg` for that — a contact sheet of
+all 15 canvases at their authored sizes. `--bless` rewrites a golden after an intended
+change; `--dump` writes full tapes to `out/tape/` when a digest mismatches and the first 40
+ops do not explain why.
+
+Two honest limits. `canvas{width:100%}` means the laid-out width is unknowable headlessly, so
+charts are given their `width` attribute or 400px — horizontal layout is an assumption, not a
+measurement. And `layoutTree` draws a random subsample of tips, so the harness seeds
+`Math.random`; that makes the *test* reproducible, it does not make the browser view
+reproducible.
+
+The first thing the overflow check found was a real bug: `ridgeline()` spaced rows by
+`(h-pad)/(rows-1)` but drew each ridge `2.6` row-heights tall, so the topmost ridge — the
+newest one — peaked up to 91px above the canvas and was clipped away. Any run under ~2150
+ticks (43 snapshots) hit it; the default 4000 happened to fit. The spacing now counts the
+overlap, which puts the tallest possible ridge exactly at the top padding.
 
 ---
 
