@@ -177,6 +177,8 @@ class World {
     this.tick = 0; this.nextId = 0;
     this.births = 0; this.deathsAlive = 0;
     this.dStarved = 0; this.dAge = 0; this.eaten = 0;
+    this.kills = [];        /* cells where something was eaten; the renderer drains it, so
+                               it is draw-only and never reaches state() or the trace */
     this.newborn = new Int32Array(cap); this.newbornParent = new Int32Array(cap);
     this.nNew = 0;
     this._seen = [0, 0, 0];
@@ -245,7 +247,9 @@ class World {
     const i = this.oid[s];
     if (this.died_of[i] < 0) this.died_of[i] = this.tick;
     this.deaths_of[i] = code;
-    if (code === 1) this.dStarved++; else if (code === 2) this.dAge++; else this.eaten++;
+    if (code === 1) this.dStarved++;
+    else if (code === 2) this.dAge++;
+    else { this.eaten++; this.kills.push(this.cell[s]); }
   }
 
   /* Group live slots by cell: members of c are _order[_offsets[c] .. +_counts[c]). */
