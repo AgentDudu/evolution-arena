@@ -393,13 +393,17 @@ function ridgeline(cv,key){
     return hist;
   });
   const m=Math.max(1e-6,...rows.flatMap(r=>Array.from(r)));
-  const step=(h-pad.t-pad.b)/Math.max(1,rows.length-1);
+  // Ridges rise OVERLAP row-heights and lean on each other. Counting that in the denominator
+  // puts the tallest possible peak exactly at pad.t; with the old (rows-1) any run under
+  // ~2150 ticks (43 snapshots) clipped the newest ridge off the top of the canvas.
+  const OVERLAP=2.6;
+  const step=(h-pad.t-pad.b)/(Math.max(1,rows.length-1)+OVERLAP);
   const bw=(w-pad.l-pad.r)/B;
   c.font="10px ui-monospace,monospace";
   for(let r=rows.length-1;r>=0;r--){
     const y0=h-pad.b-r*step, t=rows.length>1?r/(rows.length-1):0;
     c.beginPath(); c.moveTo(pad.l,y0);
-    for(let b=0;b<B;b++) c.lineTo(pad.l+b*bw,y0-(rows[r][b]/m)*step*2.6);
+    for(let b=0;b<B;b++) c.lineTo(pad.l+b*bw,y0-(rows[r][b]/m)*step*OVERLAP);
     c.lineTo(pad.l+(B-1)*bw,y0);
     c.closePath();
     c.fillStyle=`hsla(${200-140*t} 70% 60% / .28)`;
