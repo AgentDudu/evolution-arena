@@ -93,8 +93,8 @@ td:first-child,th:first-child{text-align:left}
         <div class=row id=livebar style="display:none">
           <button id=liveplay>&#10074;&#10074; pause</button>
           <button id=livestep>&#8635; step</button>
-          <label>ticks/frame</label>
-          <select id=livetpf><option>1</option><option selected>4</option><option>12</option><option>30</option></select>
+          <label>ticks/s</label>
+          <select id=livetps><option>2</option><option>5</option><option selected>15</option><option>40</option><option>120</option></select>
           <label><input type=checkbox id=livefollow checked> follow</label>
           <span id=livestat style="color:var(--dim)"></span>
         </div>
@@ -288,6 +288,15 @@ function traitStd(i){ return S.map(s=>s.std[i]); }
 /* ---------- world canvas ---------- */
 const wcv=$("#world");
 function hsl(h,s,l){ return `hsl(${(h*360)|0} ${s}% ${l}%)`; }
+/* Live frames carry organism ids, which unlocks what the baked replay cannot: a stable
+   sub-cell offset so organisms sharing a cell are not concentric, and a lerp from the
+   previous cell so a 3-cell hop glides. Baked frames have no id and draw exactly as before,
+   so the golden draw tape is unaffected. */
+const jit=(o,k)=>{let x=(o^Math.imul(k,0x9e3779b9))>>>0;
+  x=Math.imul(x^(x>>>15),0x85ebca6b)>>>0; x=Math.imul(x^(x>>>13),0xc2b2ae35)>>>0;
+  return (x>>>0)/4294967296-.5;};
+let LIVEF=null, U=1; const KILLS=[];
+
 function drawWorld(){
   const c=wcv.getContext("2d"), sz=wcv.width/W;
   if(!$("#trail").checked){
@@ -302,12 +311,20 @@ function drawWorld(){
       }
     }
   }
-  const f=frame(cur), mode=$("#colorsel").value;
+  const f=LIVEF||frame(cur), mode=$("#colorsel").value;
   if(!f.n) return;
-  const kH=TI.hue, kS=TI.size, kP=TI.speed;
+  const kH=TI.hue, kS=TI.size, kP=TI.speed, live=!!f.id;
   c.globalAlpha=.9;
   for(let i=0;i<f.n;i++){
-    const cell=f.cell[i], x=(cell%W)*sz+sz/2, y=((cell/W)|0)*sz+sz/2;
+    const cell=f.cell[i];
+    let x, y;
+    if(live){
+      let px=f.prev[i]%W, py=(f.prev[i]/W)|0, dx=(cell%W)-px, dy=((cell/W)|0)-py;
+      if(dx> W/2)dx-=W; if(dx<-W/2)dx+=W;      /* toroidal: glide the short way round */
+      if(dy> H/2)dy-=H; if(dy<-H/2)dy+=H;
+      x=(((px+dx*U)%W+W)%W+jit(f.id[i],1)*.62)*sz+sz/2;
+      y=(((py+dy*U)%H+H)%H+jit(f.id[i],2)*.62)*sz+sz/2;
+    } else { x=(cell%W)*sz+sz/2; y=((cell/W)|0)*sz+sz/2; }
     let fill, r;
     if(mode==="hue") fill=hsl(f.g[i*NG+kH]/255,70,58);
     else if(mode==="size"||mode==="speed"){ const v=tv(f,i,mode==="size"?kS:kP);
@@ -318,6 +335,12 @@ function drawWorld(){
     c.beginPath(); c.arc(x,y,(r===undefined?0.30:0.18+0.34*r)*sz,0,6.284); c.fill();
   }
   c.globalAlpha=1;
+  for(let i=KILLS.length-1;i>=0;i--){      /* predation is otherwise two concentric circles */
+    const k=KILLS[i], age=(performance.now()-k.t)/450;
+    if(age>=1){ KILLS.splice(i,1); continue; }
+    c.strokeStyle=`rgba(255,110,80,${(1-age).toFixed(3)})`; c.lineWidth=1.5;
+    c.beginPath(); c.arc((k.cell%W)*sz+sz/2, ((k.cell/W)|0)*sz+sz/2, (.3+1.2*age)*sz, 0, 6.284); c.stroke();
+  }
 }
 function legend(){
   const mode=$("#colorsel").value, L=$("#legend");
@@ -611,16 +634,32 @@ if (typeof LIVE !== "undefined" && LIVE) {
   const w = LIVE.world;
   let running = true, lastDraw = 0, ema = 0, last = performance.now();
 
-  // --steps seeds the ticks/frame control; add it to the list if it is not a preset choice.
-  const tpfSel = $("#livetpf"), stepChoices = [1, 4, 12, 30];
-  if (!stepChoices.includes(LIVE.steps)) stepChoices.push(LIVE.steps);
-  tpfSel.innerHTML = stepChoices
-    .map(v => `<option${v === LIVE.steps ? " selected" : ""}>${v}</option>`).join("");
+  // The control is ticks per second, not ticks per frame: the paint clock is the animation
+  // frame, this is the tick clock. --steps is still offered but no longer sets the opening
+  // rate, which is deliberately slow -- that rate is what made it look like a slideshow.
+  const tpsSel = $("#livetps"), tpsChoices = [2, 5, 15, 40, 120, LIVE.steps * 60];
+  tpsSel.innerHTML = [...new Set(tpsChoices)].sort((a, b) => a - b)
+    .map(v => `<option${v === 15 ? " selected" : ""}>${v}</option>`).join("");
 
   function trim(){                       // bounded history, or col() grows without limit
     if (S.length > LIVE.history) { T0 = S[0].t; S.splice(0, S.length - LIVE.history); }
     if (SN.length > LIVE.frames) SN.splice(0, SN.length - LIVE.frames);
     N = S.length; scrub.max = SN.length - 1; CACHE.clear();
+  }
+  let LASTCELL = new Map(), LIVEF_TICK = -1;
+  function liveFrame(w){
+    const m = Math.min(w.n, LIVE.snapCap || 1000);
+    const id = new Int32Array(m), cell = new Uint16Array(m), prev = new Uint16Array(m),
+          g = new Uint8Array(m * NG), e = new Uint8Array(m), next = new Map();
+    for (let i = 0; i < m; i++) {
+      const s = w.list[i], o = w.oid[s], cl = w.cell[s];
+      id[i] = o; cell[i] = cl; next.set(o, cl);
+      const pc = LASTCELL.get(o); prev[i] = pc === undefined ? cl : pc;
+      for (let k = 0; k < NG; k++) g[i * NG + k] = Math.min(255, w.g[k][s] * 255) | 0;
+      e[i] = Math.min(255, w.e[s] / 55 * 255) | 0;
+    }
+    LASTCELL = next;
+    return {t: w.tick, n: m, cell, g, e, id, prev};
   }
   function advance(n){
     for (let i = 0; i < n; i++) {
@@ -629,10 +668,25 @@ if (typeof LIVE !== "undefined" && LIVE) {
     }
     trim();
   }
+  /* Two clocks. Ticks advance at ticks/s; the picture advances every animation frame and
+     is drawn one tick BEHIND, interpolating into place. That gap is what reads as motion
+     instead of a 5 Hz slideshow. */
+  let acc = 0, lastT = performance.now();
   function loop(now){
-    const tpf = +$("#livetpf").value || 1;
-    if (running) advance(tpf);
-    if ($("#livefollow").checked) cur = SN.length - 1;
+    const tps = +$("#livetps").value || 15;
+    if (running) {
+      acc += ((now - lastT) / 1000) * tps;
+      if (acc > 6) acc = 6;                        // catch up after a stall, do not explode
+      while (acc >= 1) { acc -= 1; advance(1); }
+    }
+    lastT = now;
+    if ($("#livefollow").checked) {
+      if (w.tick !== LIVEF_TICK) { LIVEF = liveFrame(w); LIVEF_TICK = w.tick; }
+      U = running ? acc : 1;
+      cur = SN.length - 1;
+    } else { LIVEF = null; U = 1; }                // scrubbed back: paint the snapshot
+    if (w.kills.length) { for (const cl of w.kills) KILLS.push({cell: cl, t: now}); w.kills.length = 0; }
+    if (KILLS.length > 400) KILLS.splice(0, KILLS.length - 400);
     cur = clamp(cur, 0, SN.length - 1); scrub.value = cur;
     drawWorld();
     if (now - lastDraw > 200) {
@@ -648,7 +702,7 @@ if (typeof LIVE !== "undefined" && LIVE) {
     const dt = now - last; last = now;
     if (dt > 0) ema = ema ? ema * 0.9 + dt * 0.1 : dt;
     $("#livestat").textContent = running
-      ? `${Math.round(1000 * tpf / ema).toLocaleString()} ticks/s · ${Math.round(ema)} ms/frame`
+      ? `${tps} ticks/s · ${Math.round(1000 / ema).toLocaleString()} fps · ${w.n} alive`
       : "paused";
     requestAnimationFrame(loop);
   }
@@ -657,7 +711,8 @@ if (typeof LIVE !== "undefined" && LIVE) {
     $("#liveplay").innerHTML = running ? "&#10074;&#10074; pause" : "&#9654; resume"; };
   $("#livestep").onclick = () => { running = false;
     $("#liveplay").innerHTML = "&#9654; resume";
-    advance(1); cur = SN.length - 1; drawAll(); };
+    advance(1); LIVEF = liveFrame(w); LIVEF_TICK = w.tick; U = 1;
+    cur = SN.length - 1; drawAll(); };
   $("#livefollow").onchange = () => { if ($("#livefollow").checked) setCur(SN.length - 1); };
   setCur(SN.length - 1);
   requestAnimationFrame(loop);

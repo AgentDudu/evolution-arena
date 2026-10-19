@@ -1,21 +1,22 @@
 {
  "artifact": "live.html",
- "scenario": "arms_race · live seed 3 · 64×64 · tick 296 · 765 organisms lived",
+ "scenario": "arms_race · live seed 3 · 64×64 · tick 299 · 798 organisms lived",
  "canvases": {
   "world": {
-   "ops": 44176,
-   "digest": "67b854fb32a2c31c",
+   "ops": 592196,
+   "digest": "c8cc499985eaf9b2",
    "counts": {
-    "fillRect": 34,
-    "beginPath": 14714,
-    "arc": 14714,
-    "fill": 14714
+    "fillRect": 404,
+    "beginPath": 197264,
+    "arc": 197264,
+    "fill": 196565,
+    "stroke": 699
    },
    "argbox": [
     0,
     0,
-    512,
-    512
+    518.462,
+    518.064
    ],
    "head": [
     "fillRect(0,0,512,512) {fillStyle=#0f131d}",
@@ -61,16 +62,16 @@
    ]
   },
   "c_pop": {
-   "ops": 1190,
-   "digest": "9967c4a38a7a3bfc",
+   "ops": 6305,
+   "digest": "51d97f49412a9adf",
    "counts": {
-    "setTransform": 6,
-    "clearRect": 6,
-    "beginPath": 18,
-    "moveTo": 18,
-    "lineTo": 1112,
-    "stroke": 18,
-    "fillText": 12
+    "setTransform": 37,
+    "clearRect": 37,
+    "beginPath": 111,
+    "moveTo": 111,
+    "lineTo": 5824,
+    "stroke": 111,
+    "fillText": 74
    },
    "argbox": [
     38,
@@ -122,18 +123,18 @@
    ]
   },
   "c_deaths": {
-   "ops": 6732,
-   "digest": "afe42e53c4d4202e",
+   "ops": 35314,
+   "digest": "c3a7e1d2fff6a735",
    "counts": {
-    "setTransform": 6,
-    "clearRect": 6,
-    "beginPath": 30,
-    "moveTo": 12,
-    "lineTo": 6618,
-    "stroke": 12,
-    "fillText": 12,
-    "closePath": 18,
-    "fill": 18
+    "setTransform": 37,
+    "clearRect": 37,
+    "beginPath": 185,
+    "moveTo": 74,
+    "lineTo": 34611,
+    "stroke": 74,
+    "fillText": 74,
+    "closePath": 111,
+    "fill": 111
    },
    "argbox": [
     38,
@@ -185,16 +186,16 @@
    ]
   },
   "c_energy": {
-   "ops": 2314,
-   "digest": "2ad0c45769b03a37",
+   "ops": 12203,
+   "digest": "e20ecd82f43bc6bf",
    "counts": {
-    "setTransform": 6,
-    "clearRect": 6,
-    "beginPath": 24,
-    "moveTo": 24,
-    "lineTo": 2206,
-    "stroke": 24,
-    "fillText": 24
+    "setTransform": 37,
+    "clearRect": 37,
+    "beginPath": 148,
+    "moveTo": 148,
+    "lineTo": 11537,
+    "stroke": 148,
+    "fillText": 148
    },
    "argbox": [
     38,
@@ -246,16 +247,16 @@
    ]
   },
   "c_div": {
-   "ops": 2314,
-   "digest": "ce7e1280f525767e",
+   "ops": 12203,
+   "digest": "a00e13437ba3bf40",
    "counts": {
-    "setTransform": 6,
-    "clearRect": 6,
-    "beginPath": 24,
-    "moveTo": 24,
-    "lineTo": 2206,
-    "stroke": 24,
-    "fillText": 24
+    "setTransform": 37,
+    "clearRect": 37,
+    "beginPath": 148,
+    "moveTo": 148,
+    "lineTo": 11537,
+    "stroke": 148,
+    "fillText": 148
    },
    "argbox": [
     38,
@@ -307,16 +308,16 @@
    ]
   },
   "t_mean": {
-   "ops": 3569,
-   "digest": "7340c86fec7429e3",
+   "ops": 36832,
+   "digest": "2ec9664f6426d630",
    "counts": {
-    "setTransform": 3,
-    "clearRect": 3,
-    "beginPath": 24,
-    "moveTo": 24,
-    "lineTo": 3485,
-    "stroke": 24,
-    "fillText": 6
+    "setTransform": 34,
+    "clearRect": 34,
+    "beginPath": 272,
+    "moveTo": 272,
+    "lineTo": 35880,
+    "stroke": 272,
+    "fillText": 68
    },
    "argbox": [
     38,
@@ -368,16 +369,16 @@
    ]
   },
   "t_std": {
-   "ops": 3569,
-   "digest": "c91cfe0b3bbeffdf",
+   "ops": 36832,
+   "digest": "7a72c9c77129f950",
    "counts": {
-    "setTransform": 3,
-    "clearRect": 3,
-    "beginPath": 24,
-    "moveTo": 24,
-    "lineTo": 3485,
-    "stroke": 24,
-    "fillText": 6
+    "setTransform": 34,
+    "clearRect": 34,
+    "beginPath": 272,
+    "moveTo": 272,
+    "lineTo": 35880,
+    "stroke": 272,
+    "fillText": 68
    },
    "argbox": [
     38,
@@ -429,16 +430,16 @@
    ]
   },
   "c_flux": {
-   "ops": 1045,
-   "digest": "f05a5f74f757c477",
+   "ops": 10810,
+   "digest": "9cda955e5d01be60",
    "counts": {
-    "setTransform": 3,
-    "clearRect": 3,
-    "beginPath": 9,
-    "moveTo": 9,
-    "lineTo": 1000,
-    "stroke": 9,
-    "fillText": 12
+    "setTransform": 34,
+    "clearRect": 34,
+    "beginPath": 102,
+    "moveTo": 102,
+    "lineTo": 10300,
+    "stroke": 102,
+    "fillText": 136
    },
    "argbox": [
     38,
@@ -490,16 +491,16 @@
    ]
   },
   "c_fat": {
-   "ops": 533,
-   "digest": "6b6e5d561ec0e0bd",
+   "ops": 5524,
+   "digest": "5d52e03bfd66bfe3",
    "counts": {
-    "setTransform": 3,
-    "clearRect": 3,
-    "beginPath": 6,
-    "moveTo": 6,
-    "lineTo": 503,
-    "stroke": 6,
-    "fillText": 6
+    "setTransform": 34,
+    "clearRect": 34,
+    "beginPath": 68,
+    "moveTo": 68,
+    "lineTo": 5184,
+    "stroke": 68,
+    "fillText": 68
    },
    "argbox": [
     38,
@@ -551,18 +552,18 @@
    ]
   },
   "t_ridge_size": {
-   "ops": 350,
-   "digest": "7912c961c1ba90e3",
+   "ops": 4114,
+   "digest": "b68795776a2aea2f",
    "counts": {
-    "setTransform": 3,
-    "clearRect": 3,
-    "beginPath": 13,
-    "moveTo": 13,
-    "lineTo": 273,
-    "closePath": 13,
-    "fill": 13,
-    "stroke": 13,
-    "fillText": 6
+    "setTransform": 34,
+    "clearRect": 34,
+    "beginPath": 153,
+    "moveTo": 153,
+    "lineTo": 3213,
+    "closePath": 153,
+    "fill": 153,
+    "stroke": 153,
+    "fillText": 68
    },
    "argbox": [
     34,
@@ -614,18 +615,18 @@
    ]
   },
   "t_ridge_speed": {
-   "ops": 350,
-   "digest": "a68d3f02ebdd67d5",
+   "ops": 4114,
+   "digest": "340dc46fed083d8a",
    "counts": {
-    "setTransform": 3,
-    "clearRect": 3,
-    "beginPath": 13,
-    "moveTo": 13,
-    "lineTo": 273,
-    "closePath": 13,
-    "fill": 13,
-    "stroke": 13,
-    "fillText": 6
+    "setTransform": 34,
+    "clearRect": 34,
+    "beginPath": 153,
+    "moveTo": 153,
+    "lineTo": 3213,
+    "closePath": 153,
+    "fill": 153,
+    "stroke": 153,
+    "fillText": 68
    },
    "argbox": [
     34,
@@ -677,22 +678,22 @@
    ]
   },
   "t_scatter1": {
-   "ops": 3273,
-   "digest": "5a8eb3ba3c0844d2",
+   "ops": 40120,
+   "digest": "2ea3769f6727241d",
    "counts": {
-    "setTransform": 3,
-    "clearRect": 3,
-    "beginPath": 1081,
-    "moveTo": 3,
-    "lineTo": 6,
-    "stroke": 3,
-    "fillText": 6,
-    "save": 3,
-    "translate": 3,
-    "rotate": 3,
-    "restore": 3,
-    "arc": 1078,
-    "fill": 1078
+    "setTransform": 34,
+    "clearRect": 34,
+    "beginPath": 13260,
+    "moveTo": 34,
+    "lineTo": 68,
+    "stroke": 34,
+    "fillText": 68,
+    "save": 34,
+    "translate": 34,
+    "rotate": 34,
+    "restore": 34,
+    "arc": 13226,
+    "fill": 13226
    },
    "argbox": [
     2.3,
@@ -744,22 +745,22 @@
    ]
   },
   "t_scatter2": {
-   "ops": 3273,
-   "digest": "3895c98d9524ee9e",
+   "ops": 40120,
+   "digest": "8b37541ce7604055",
    "counts": {
-    "setTransform": 3,
-    "clearRect": 3,
-    "beginPath": 1081,
-    "moveTo": 3,
-    "lineTo": 6,
-    "stroke": 3,
-    "fillText": 6,
-    "save": 3,
-    "translate": 3,
-    "rotate": 3,
-    "restore": 3,
-    "arc": 1078,
-    "fill": 1078
+    "setTransform": 34,
+    "clearRect": 34,
+    "beginPath": 13260,
+    "moveTo": 34,
+    "lineTo": 68,
+    "stroke": 34,
+    "fillText": 68,
+    "save": 34,
+    "translate": 34,
+    "rotate": 34,
+    "restore": 34,
+    "arc": 13226,
+    "fill": 13226
    },
    "argbox": [
     2.3,
@@ -811,23 +812,23 @@
    ]
   },
   "tree": {
-   "ops": 4366,
-   "digest": "02ae06390bb1f6b3",
+   "ops": 51626,
+   "digest": "ecf4aadb240069dd",
    "counts": {
-    "setTransform": 3,
-    "clearRect": 3,
-    "beginPath": 874,
-    "moveTo": 866,
-    "lineTo": 1732,
-    "stroke": 866,
-    "fillText": 6,
-    "arc": 8,
-    "fill": 8
+    "setTransform": 34,
+    "clearRect": 34,
+    "beginPath": 10316,
+    "moveTo": 10271,
+    "lineTo": 20542,
+    "stroke": 10271,
+    "fillText": 68,
+    "arc": 45,
+    "fill": 45
    },
    "argbox": [
     1.4,
     0,
-    357.831,
+    375.933,
     598
    ],
    "head": [
@@ -874,17 +875,17 @@
    ]
   },
   "t_depth": {
-   "ops": 150,
-   "digest": "badd02f7b12284a9",
+   "ops": 1700,
+   "digest": "1f08c3540297c900",
    "counts": {
-    "setTransform": 3,
-    "clearRect": 3,
-    "beginPath": 3,
-    "moveTo": 3,
-    "lineTo": 6,
-    "stroke": 3,
-    "fillRect": 120,
-    "fillText": 9
+    "setTransform": 34,
+    "clearRect": 34,
+    "beginPath": 34,
+    "moveTo": 34,
+    "lineTo": 68,
+    "stroke": 34,
+    "fillRect": 1360,
+    "fillText": 102
    },
    "argbox": [
     7.95,

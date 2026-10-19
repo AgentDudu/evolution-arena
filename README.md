@@ -18,13 +18,19 @@ simulator is inlined in the page and runs in your browser.
 `--live` is the agar.io-style view: the world steps in real time, organisms are drawn every
 frame, and the graphs below redraw about five times a second while you watch. It is a live
 run, not a recording — the scrubber follows the frontier, and dragging it back pauses and
-rewinds; press resume to rejoin. Speed is `--steps`: how many ticks one animation frame
-computes. Raise it to run faster than real time, at the cost of a choppier world. The
+rewinds; press resume to rejoin. The tick clock and the paint clock are separate: ticks
+advance at the rate in the `ticks/s` box (15, deliberately slow) and the picture advances
+every animation frame, one tick behind, interpolating into place — that gap is what reads as
+motion rather than a slideshow. Organisms are nudged to a stable spot inside their own cell,
+so two in one cell are not concentric, and a kill leaves a short orange ring; without that,
+predation is two circles sharing a point and is invisible. The
 lineage tree keeps growing as you watch, so it is rebuilt on that same five-times-a-second
 beat rather than every frame.
 
 Drop `--live` and the sim runs in Python instead, with a finished trace baked into the page.
-Slower to produce, but it carries every tick, so the scrubber has full resolution:
+Slower to produce, and it carries every tick of the *statistics* — but the world canvas is
+redrawn from a snapshot taken every `--snap-every` ticks (50 by default), so scrubbing the
+baked page jumps 50 ticks at a time. Watch it move with `--live`:
 
 ---
 
@@ -186,7 +192,7 @@ python -m evo.controls                        # regenerate the controls table be
 python -m evo.run --preset arms_race --ticks 4000 --seed 1 --out out/arms
 python -m evo.run --preset arms_race --seed 3 --live --out out/live
 node tools/render_check.js out/arms.html      # dashboard draws the blessed tape
-node tools/render_check.js out/live.html      # live page boots the Python world and advances
+node tools/render_check.js out/live.html      # live loop advances, interpolates, and draws kills
 ```
 
 Presets: `ancestral` `eden` `famine` `arms_race` `mutagenic` `peaceful` `flat`.

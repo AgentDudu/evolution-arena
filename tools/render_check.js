@@ -247,11 +247,17 @@ if (isLive) {
 if (isLive) {
   ev("LIVE.history = 150; LIVE.frames = 8;");
   const before = ev("LIVE.world.tick");
+  let maxKills = 0, sawLerp = false;
+  const FRAMES = 400;          // ~100 ticks at the 15 ticks/s default; clears tick 285,
+                               // where predation starts in arms_race seed 1
   try {
-    for (let f = 0; f < 30; f++) {
+    for (let f = 0; f < FRAMES; f++) {
       clock += 16.7;
       const q = rafQueue; rafQueue = [];
       for (const cb of q) cb(clock);
+      if (ev("KILLS.length") > maxKills) maxKills = ev("KILLS.length");
+      const u = ev("U");
+      if (u > 0 && u < 1) sawLerp = true;
     }
   } catch (e) {
     console.log("LIVE LOOP ERROR:", e.stack.split("\n").slice(0, 4).join("\n"));
@@ -259,19 +265,38 @@ if (isLive) {
   }
   const gained = ev("LIVE.world.tick") - before;
   const stats = ev("TRACE.stats.length"), snaps = ev("TRACE.snaps.length");
-  console.log(`live: pumped 30 frames, tick ${before} -> ${ev("LIVE.world.tick")} `
+  console.log(`live: pumped ${FRAMES} frames, tick ${before} -> ${ev("LIVE.world.tick")} `
     + `(+${gained}), stats ${stats}/${ev("LIVE.history")} frames ${snaps}/${ev("LIVE.frames")}`);
   if (gained <= 0) { console.log("LIVE LOOP DREW BUT NEVER ADVANCED"); process.exit(1); }
   if (stats > ev("LIVE.history") || snaps > ev("LIVE.frames")) {
     console.log("LIVE HISTORY NOT BOUNDED"); process.exit(1);
   }
   if (stats < ev("LIVE.history")) { console.log("WINDOW NEVER FILLED, trim untested"); process.exit(1); }
-  // the ticks/frame select is rebuilt from --steps; read the markup the page wrote
-  const tpfHtml = String(nodes.get("livetpf").innerHTML);
-  if (!tpfHtml.includes(`selected>${ev("LIVE.steps")}<`)) {
-    console.log(`ticks/frame control does not select ${ev("LIVE.steps")}; it rendered: ${tpfHtml}`);
+  // the ticks/s select is rebuilt from --steps; read the markup the page wrote
+  const tpsHtml = String(nodes.get("livetps").innerHTML);
+  if (!tpsHtml.includes("selected>15<")) {
+    console.log(`ticks/s control does not open at 15; it rendered: ${tpsHtml}`);
     process.exit(1);
   }
+  const want = ev("LIVE.steps") * 60;
+  if (!tpsHtml.includes(`>${want}<`)) {
+    console.log(`ticks/s control dropped --steps ${ev("LIVE.steps")} (= ${want} ticks/s)`);
+    process.exit(1);
+  }
+  // the picture must be a live frame: ids, plus the previous cell to interpolate from
+  if (!ev("!!LIVEF && !!LIVEF.id") || ev("LIVEF.prev.length") !== ev("LIVEF.n")) {
+    console.log("LIVE FRAME HAS NO ID OR NO PREVIOUS CELL, so nothing can interpolate");
+    process.exit(1);
+  }
+  if (!sawLerp) {
+    console.log("NEVER PAINTED BETWEEN TICKS, so playback is still stepping");
+    process.exit(1);
+  }
+  if (maxKills === 0) {
+    console.log("NO PREDATION REACHED THE RENDERER");
+    process.exit(1);
+  }
+  console.log(`live: painted between ticks, ${maxKills} kill ring(s) on screen at once`);
 }
 
 /* ---------------- golden draw tape ---------------- */
